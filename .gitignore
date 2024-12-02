@@ -1,0 +1,10 @@
+*.~undo-tree~
+.local/*
+eln-cache/*
+elpa/*
+history
+*~
+pyim/*
+recentf
+straight/*
+transient/*
