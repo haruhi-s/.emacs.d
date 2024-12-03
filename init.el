@@ -19,12 +19,24 @@
 (straight-use-package 'use-package)
 
 ;; general behavior
+(defun eval-and-replace-region (expr)
+  (interactive (list (read--expression "Eval on region: " "~")))
+  (let* ((rbeg (region-beginning))
+         (rend (region-end))
+         (region (car (read-from-string (buffer-substring rbeg rend))))
+         (result (eval `((lambda (~) ,expr) ',region))))
+    (kill-region rbeg rend)
+    (prin1 result (current-buffer))))
+(bind-key* "M-@" 'eval-and-replace-region)
+
 (setq ring-bell-function 'ignore) ;; silence
 (add-to-list 'auto-mode-alist '("\\.sbclrc\\'" . lisp-mode))
 (global-hl-line-mode 1)
 (savehist-mode 1)
 (defun find-init-el () (interactive) (find-file "~/.emacs.d/init.el"))
 (bind-key* "M-m i" 'find-init-el)
+(defun find-sbclrc () (interactive) (find-file "~/.sbclrc"))
+(bind-key* "M-m s" 'find-sbclrc)
 (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 (setq whitespace-style '(face tabs trailing empty space-after-tab tab-mark missing-newline-at-eof))
 (setq-default indent-tabs-mode nil)
@@ -169,7 +181,8 @@
   (setq-local tab-always-indent 'complete))
 
 (defun u-minibuffer-setup ()
-  (when (memq this-command '(eval-expression))
+  (when (memq this-command '(eval-expression
+                             eval-and-replace-region))
     (u-lisp-config)))
 
 (add-hook 'minibuffer-setup-hook 'u-minibuffer-setup)
