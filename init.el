@@ -20,12 +20,13 @@
 
 ;; general behavior
 (setq ring-bell-function 'ignore) ;; silence
+(add-to-list 'auto-mode-alist '("\\.sbclrc\\'" . lisp-mode))
 (global-hl-line-mode 1)
 (savehist-mode 1)
 (defun find-init-el () (interactive) (find-file "~/.emacs.d/init.el"))
 (bind-key* "M-m i" 'find-init-el)
 (add-hook 'prog-mode-hook 'display-line-numbers-mode)
-(setq whitespace-style '(face tabs trailing lines empty space-after-tab tab-mark missing-newline-at-eof))
+(setq whitespace-style '(face tabs trailing empty space-after-tab tab-mark missing-newline-at-eof))
 (setq-default indent-tabs-mode nil)
 (set-face-attribute 'default nil :family "Cascadia Code" :height 95)
 (tool-bar-mode -1)
@@ -40,10 +41,17 @@
 
 (setq enable-recursive-minibuffers t)
 
-(setq completing-read-function 'com)
-      
 (use-package ivy :straight t
   :config
+  (defun ivy-switch-buffer ()
+  "Switch to another buffer."
+  (interactive)
+  (ivy-read "Switch to buffer: " #'internal-complete-buffer
+            :keymap ivy-switch-buffer-map
+            :preselect (buffer-name (current-buffer))
+            :action #'ivy--switch-buffer-action
+            :matcher #'ivy--switch-buffer-matcher
+            :caller 'ivy-switch-buffer))
   (ivy-mode 1)
   (setq-default completing-read-function 'completing-read-default)
   (setq-default ivy-use-virtual-buffers t)
@@ -121,6 +129,9 @@
 (bind-key* "M-k" 'hs-toggle-hiding)
 
 ;; packages
+(require 'subr-x)
+(use-package alist :straight apel :demand t)
+
 (use-package doom-themes :straight t)
 
 (use-package company :straight t
@@ -132,16 +143,30 @@
 (use-package paredit
   :straight t
   :config
-  (advice-add 'paredit-kill :after 'fixup-whitespace)
   (define-key paredit-mode-map (kbd "C-j") nil)
   (define-key paredit-mode-map (kbd "C-m") nil)
   (define-key paredit-mode-map (kbd "C-h") 'paredit-backward-delete)
-  (define-key paredit-mode-map (kbd "<backspace>") 'paredit-backward-delete))
+  (define-key paredit-mode-map (kbd "<backspace>") 'paredit-backward-delete)
+  (defun u-kill (fn &rest args)
+    (let* ((cur (point)) (bol (point-at-bol)) (eol (point-at-eol))
+           (end (save-excursion (paredit-forward-sexps-to-kill cur eol) (point))))
+      (if (and (eq cur bol)
+               (not (eq ?\C-j (char-before (1- cur))))
+               (eq ?\C-j (char-after (1+ end))))
+          (kill-region cur (1+ end)) (apply fn args))))
+  (defun u-indent (&rest _args)
+    (save-excursion (paredit-indent-sexps)))
+  (advice-add 'paredit-kill :around 'u-kill)
+  (advice-add 'paredit-kill :after 'fixup-whitespace)
+  (advice-add 'paredit-kill :after 'u-indent))
+
+(use-package paren-face :straight t)
 
 (defun u-lisp-config ()
   (smartparens-mode -1)
   (paredit-mode t)
   (paren-face-mode t)
+  (auto-highlight-symbol-mode 1)
   (setq-local tab-always-indent 'complete))
 
 (defun u-minibuffer-setup ()
@@ -150,7 +175,9 @@
 
 (add-hook 'minibuffer-setup-hook 'u-minibuffer-setup)
 (add-hook 'lisp-mode-hook 'u-lisp-config)
+(add-hook 'lisp-mode-hook 'whitespace-mode)
 (add-hook 'emacs-lisp-mode-hook 'u-lisp-config)
+(add-hook 'emacs-lisp-mode-hook 'whitespace-mode)
 (add-hook 'inferior-scheme-mode-hook 'u-lisp-config)
 
 (define-key emacs-lisp-mode-map (kbd "C-j") 'eval-print-last-sexp)
@@ -230,8 +257,9 @@
   (global-set-key (kbd "M-t") 'swiper-thing-at-point)
   (global-set-key (kbd "C-s") 'swiper-isearch)
   (global-set-key (kbd "C-r") 'swiper-isearch-backward))
-(use-package paren-face :straight t)
+
 (use-package slime-company :straight t)
+
 (use-package slime
   :straight t
   :config
@@ -246,13 +274,16 @@
   (define-key slime-mode-map (kbd "M-p") 'backward-paragraph)
   (define-key slime-mode-map (kbd "M-n") 'forward-paragraph)
   (define-key slime-mode-map (kbd "M-r") nil)
-  
   (defun ora-slime-completion-in-region (_fn completions start end)
     (funcall completion-in-region-function start end completions))
-
   (advice-add
    'slime-display-or-scroll-completions
    :around #'ora-slime-completion-in-region)
+  (setq-default
+   inferior-lisp-program "sbcl"
+   slime-lisp-implementations
+   `((sbcl ("sbcl" "--dynamic-space-size" "4096"))
+     (mega-sbcl ("sbcl" "--dynamic-space-size" "24000" "--control-stack-size" "2"))))
   )
 
 (use-package slime-repl
@@ -260,7 +291,14 @@
               ("M-r")
               ("M-s")
               ("C-s" . consult-history)
-              ("C-r" . consult-history)))
+              ("C-r" . consult-history))
+  :config
+    (set-alist 'consult-mode-histories 'slime-repl-mode '(slime-repl-input-history)))
+
+(use-package telega :straight t
+  :config
+  (bind-key* "C-c C-t C-t" 'telega)
+  (setq telega-avatar-workaround-gaps-for '(return t)))
 
 (use-package org-download :straight t
   :ensure t
@@ -295,10 +333,6 @@
     ((eq system-type 'gnu/linux)
      "xclip -selection clipboard -t image/png -o > '%s'"))))
 
-(use-package telega :straight t
-  :config
-  (global-set-key (kbd "C-c C-t C-t") 'telega)
-  (global-set-key (kbd "C-c C-t t") 'telega))
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
