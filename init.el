@@ -141,8 +141,11 @@
 (bind-key* "M-k" 'hs-toggle-hiding)
 
 ;; packages
+
 (require 'subr-x)
 (use-package alist :straight apel :demand t)
+
+(use-package magit :straight t)
 
 (use-package doom-themes :straight t)
 
