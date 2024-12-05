@@ -153,7 +153,7 @@
   :config
   (setf company-backends '(company-capf company-files))
   (setq company-global-modes '(not org-mode))
-  (global-company-mode 1))
+  (global-company-mode -1))
 
 (use-package paredit
   :straight t
