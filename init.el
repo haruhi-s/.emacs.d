@@ -167,11 +167,12 @@
 
 (use-package paredit
   :straight t
+  :bind
+  ( :map paredit-mode-map
+    ("C-j") ("C-m") ("C-h")
+    ("<backspace>" . 'paredit-backward-delete)
+    ("M-C" . 'paredit-convolute-sexp))
   :config
-  (define-key paredit-mode-map (kbd "C-j") nil)
-  (define-key paredit-mode-map (kbd "C-m") nil)
-  (define-key paredit-mode-map (kbd "C-h") 'paredit-backward-delete)
-  (define-key paredit-mode-map (kbd "<backspace>") 'paredit-backward-delete)
   (define-advice paredit-kill (:around (fn &rest args) u-kill)
     (let* ((cur (point)) (bol (point-at-bol)) (eol (point-at-eol))
            (end (save-excursion (paredit-forward-sexps-to-kill cur eol) (point))))
@@ -195,6 +196,7 @@
 (defun u-lisp-config ()
   (smartparens-mode -1)
   (rainbow-delimiters-mode 1)
+  (when (fboundp 'smartparens-mode) (smartparens-mode -1))
   (paredit-mode t)
   (paren-face-mode t)
   (auto-highlight-symbol-mode 1)
