@@ -41,7 +41,7 @@
 (add-hook 'prog-mode-hook 'column-number-mode)
 (setq whitespace-style '(face tabs trailing empty space-after-tab tab-mark missing-newline-at-eof))
 (setq-default indent-tabs-mode nil)
-(set-face-attribute 'default nil :family "Cascadia Code" :height 95)
+(set-face-attribute 'default nil :family "Cascadia Code" :height (if (eq (display-pixel-height) 1800) 110 95))
 (tool-bar-mode -1)
 (menu-bar-mode -1)
 (setq scroll-conservatively 20)

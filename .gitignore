@@ -10,3 +10,4 @@ straight/*
 transient/*
 tramp
 session.*
+.#*
