@@ -1,0 +1,81 @@
+;;; The following lines added by ql:add-to-init-file:
+#-quicklisp
+(let ((quicklisp-init (merge-pathnames "quicklisp/setup.lisp"
+                                       (user-homedir-pathname))))
+  (when (probe-file quicklisp-init)
+    (load quicklisp-init)))
+
+
+(ql:quickload '("numcl" "alexandria" "serapeum" "iterate" "trivia" "str" "metabang-bind"))
+
+(sb-ext:add-package-local-nickname "S" "SERAPEUM")
+(sb-ext:add-package-local-nickname "NP" "NUMCL.EXPORTED")
+(use-package :alexandria)
+(use-package :iterate)
+(use-package :trivia)
+(import 'metabang.bind:bind)
+
+(import 's:def)
+(shadowing-import '(np:- np:+ np:/ np:* np:matmul np:matmul* np:aref np:asarray))
+
+(defun sum (list) (reduce #'+ list))
+(setf (symbol-function 'mkhash) #'make-hash-table)
+
+(defmacro ~ (subject &rest args)
+  (once-only (subject)
+   (let ((first (first args)))
+     (cond ((null args) subject)
+           ((null (rest args))
+            (if (equal first (subst subject '~ first))
+                `(,@first ,subject)
+                (subst subject '~ first)))
+           (:else
+            `(~ (~ ,subject ,first) ,@(rest args)))))))
+
+(defmacro binds (binds &body body)
+  `(bind ,(iter (for b in binds)
+            (collecting
+              (match b
+                ((list name form) (list name form))
+                ((list* name args body) `((:labels ,name ,args) ,@body)))))
+     ,@body))
+
+(defmacro defmemoize (name args &body body)
+  `(let ((hash (make-hash-table :test 'equal)))
+     (defun ,name ,args (ensure-gethash (list ,@args) hash (progn ,@body)))))
+
+(defun any (xs) (notevery #'null xs))
+
+;; (~ expr)
+(defun |[-reader| (stream char)
+  (declare (ignore char))
+  (let* ((indices (iter (for c = (read-char stream))
+                    (until (eql c #\]))
+                    (collect c result-type string)))
+         (array (read stream)))
+    (labels ((process (indices)
+               (mapcar #'process-index-string (str:split #\, indices)))
+             (process-index-string (s)
+               (let ((i (str:split ":" s)))
+                 (cond ((equal s "...") 'numcl:-)
+                       ((null i) t)
+                       ((null (cdr i)) (parse-integer (car i)))
+                       (:else `(list
+                                ,@(iter (for j from 0) (for s in i)
+                                   (if (str:emptyp s)
+                                       (collect (nth j (list 0 array-dimension-limit 1)))
+                                       (collect (parse-integer s))))))))))
+        `(numcl:aref ,array ,@(process indices)))))
+
+(set-macro-character #\[ '|[-reader|)
+
+;; cartesian products
+(defun cart (&rest lists)
+  (if (null lists) (list nil)
+      (let ((result (apply #'cart (rest lists))))
+        (mapcan (lambda (i) (mapcar (curry #'cons i) result)) (first lists)))))
+
+(defun cartl (&rest lists) (apply #'cart (reverse lists)))
+(defun cartr (&rest lists) (apply #'cart lists))
+
+(defmacro len (&rest args) `(length ,@args))
