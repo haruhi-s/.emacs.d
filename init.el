@@ -38,6 +38,7 @@
 (defun find-sbclrc () (interactive) (find-file "~/.sbclrc"))
 (bind-key* "M-m s" 'find-sbclrc)
 (add-hook 'prog-mode-hook 'display-line-numbers-mode)
+(add-hook 'prog-mode-hook 'column-number-mode)
 (setq whitespace-style '(face tabs trailing empty space-after-tab tab-mark missing-newline-at-eof))
 (setq-default indent-tabs-mode nil)
 (set-face-attribute 'default nil :family "Cascadia Code" :height 95)
@@ -49,7 +50,11 @@
 (scroll-bar-mode -1)
 
 (use-package consult :straight t :config
-  (global-set-key (kbd "<f1> t") 'consult-theme))
+  (global-set-key (kbd "<f1> t") 'consult-theme)
+  (defun grep-thing-at-point ()
+    (interactive)
+    (consult-grep nil (symbol-name (symbol-at-point))))
+  (bind-key "<f1> g" 'grep-thing-at-point))
 
 (setq enable-recursive-minibuffers t)
 
@@ -149,6 +154,11 @@
 
 (use-package doom-themes :straight t)
 
+(use-package image-mode :straight t
+  :config
+  (define-key image-mode-map (kbd "=") 'image-increase-size)
+  (define-key image-mode-map (kbd "-") 'image-decrease-size))
+
 (use-package company :straight t
   :config
   (setf company-backends '(company-capf company-files))
@@ -176,8 +186,15 @@
 
 (use-package paren-face :straight t)
 
+(use-package smartparens :straight t
+  :config
+  (add-hook 'prog-mode-hook 'smartparens-mode))
+
+(use-package rainbow-delimiters :straight t)
+
 (defun u-lisp-config ()
   (smartparens-mode -1)
+  (rainbow-delimiters-mode 1)
   (paredit-mode t)
   (paren-face-mode t)
   (auto-highlight-symbol-mode 1)
@@ -252,10 +269,6 @@
   :config
   (global-undo-tree-mode))
 
-(use-package smartparens :straight t
-  :config
-  (add-hook 'prog-mode-hook 'smartparens-mode))
-
 (use-package clang-format :straight t
   :config
   (setq-default clang-format-executable "/home/a/.venv/bin/clang-format")
@@ -312,6 +325,7 @@
 
 (use-package telega :straight t
   :config
+  (bind-key (kbd "C-M-c") nil telega-chat-mode-map)
   (bind-key* "C-c C-t C-t" 'telega)
   (setq telega-avatar-workaround-gaps-for '(return t)))
 
