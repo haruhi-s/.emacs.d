@@ -41,7 +41,7 @@
 (add-hook 'prog-mode-hook 'column-number-mode)
 (setq whitespace-style '(face tabs trailing empty space-after-tab tab-mark missing-newline-at-eof))
 (setq-default indent-tabs-mode nil)
-(set-face-attribute 'default nil :family "Cascadia Code" :height (if (eq (display-pixel-height) 1800) 110 95))
+(set-face-attribute 'default nil :family "Cascadia Code" :height (if (eq (display-pixel-height) 1800) 110 100))
 (tool-bar-mode -1)
 (menu-bar-mode -1)
 (setq scroll-conservatively 20)
@@ -124,11 +124,8 @@
 (bind-key* "M-5" 'winum-select-window-5)
 
 (bind-key* "C-x C-b" 'ivy-switch-buffer)
-(bind-key* "M-m b b" 'ivy-switch-buffer)
-(bind-key* "M-m M-b" 'ibuffer)
+(bind-key* "M-m M-b" 'ivy-switch-buffer)
 (bind-key* "M-m b d" 'kill-this-buffer)
-(bind-key* "M-m b p" 'previous-buffer)
-(bind-key* "M-m b n" 'next-buffer)
 (bind-key* "M-m M-p" 'previous-buffer)
 (bind-key* "M-m M-n" 'next-buffer)
 (bind-key* "M-m M-d" 'kill-this-buffer)
@@ -267,9 +264,9 @@
   (global-auto-highlight-symbol-mode 1)
   (setq ahs-idle-interval 0))
 
-(use-package undo-tree :straight t
-  :config
-  (global-undo-tree-mode))
+;; (use-package undo-tree :straight t
+;;   :config
+;;   (global-undo-tree-mode))
 
 (use-package clang-format :straight t
   :config
@@ -312,8 +309,7 @@
   (setq-default
    inferior-lisp-program "sbcl"
    slime-lisp-implementations
-   `((sbcl ("sbcl" "--dynamic-space-size" "4096"))
-     (mega-sbcl ("sbcl" "--dynamic-space-size" "24000" "--control-stack-size" "2"))))
+   `((sbcl ("sbcl" "--dynamic-space-size" "24000" "--control-stack-size" "2"))))
   )
 
 (use-package slime-repl
