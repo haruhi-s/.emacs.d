@@ -58,6 +58,11 @@
 
 (setq enable-recursive-minibuffers t)
 
+(use-package python :straight t
+  :config
+  (setq python-interpreter "~/.venv/bin/python")
+  (setq python-shell-interpreter "~/.venv/bin/python"))
+
 (use-package ivy :straight t
   :config
   (defun ivy-switch-buffer ()
@@ -226,6 +231,7 @@
   (setq-default pyim-punctuation-translate-p '(no))
   (setq-default pyim-pinyin-fuzzy-alist '())
   (setq-default pyim-enable-shortcode nil)
+  (setq-default pyim-candidates-search-buffer-p nil)
   (require 'popup)
   (setq pyim-page-tooltip 'popup))
 
