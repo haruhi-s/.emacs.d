@@ -61,7 +61,8 @@
 (use-package python :straight t
   :config
   (setq python-interpreter "~/.venv/bin/python")
-  (setq python-shell-interpreter "~/.venv/bin/python"))
+  (setq python-shell-interpreter "~/.venv/bin/python")
+  (bind-key "C-c C-p" 'run-python))
 
 (use-package ivy :straight t
   :config
