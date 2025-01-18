@@ -41,7 +41,19 @@
 (add-hook 'prog-mode-hook 'column-number-mode)
 (setq whitespace-style '(face tabs trailing empty space-after-tab tab-mark missing-newline-at-eof))
 (setq-default indent-tabs-mode nil)
-(set-face-attribute 'default nil :family "Cascadia Code" :height (if (eq (display-pixel-height) 1800) 110 100))
+
+(defun user-set-font-face (frame)
+  (dolist (alist (display-monitor-attributes-list))
+    (let* ((height (nth 3 (alist-get 'geometry alist)))
+           (frames (alist-get 'frames alist)))
+      (when (memq frame frames)
+        ( set-face-attribute 'default frame :family "Cascadia Code" :height
+          (cond ((eq 1800 height) 110)
+                ((eq 1080 height) 69)
+                (t 100)))))))
+
+(add-hook 'window-size-change-functions 'user-set-font-face)
+
 (tool-bar-mode -1)
 (menu-bar-mode -1)
 (setq scroll-conservatively 20)
