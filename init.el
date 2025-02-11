@@ -237,8 +237,8 @@
   :config
   (setq pyim-page-length 5)
   (pyim-default-scheme 'microsoft-shuangpin)
-  (global-set-key (kbd "M-i") 'pyim-deactivate)
-  (global-set-key (kbd "M-o") 'pyim-activate)
+  (bind-key* "M-i" 'pyim-deactivate)
+  (bind-key* "M-o" 'pyim-activate)
   (define-key pyim-mode-map "." #'pyim-next-page)
   (define-key pyim-mode-map "," #'pyim-previous-page)
   (setq-default pyim-punctuation-translate-p '(no))
