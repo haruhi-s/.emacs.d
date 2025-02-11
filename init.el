@@ -61,6 +61,10 @@
 (setq kill-whole-line t)
 (scroll-bar-mode -1)
 
+(use-package transpose-frame :straight t
+  :config
+  (bind-key* "M-t M-f" 'transpose-frame))
+
 (use-package consult :straight t :config
   (global-set-key (kbd "<f1> t") 'consult-theme)
   (defun grep-thing-at-point ()
