@@ -49,8 +49,8 @@
       (when (memq frame frames)
         ( set-face-attribute 'default frame :family "Cascadia Code" :height
           (cond ((eq 1800 height) 110)
-                ((eq 1080 height) 69)
-                (t 100)))))))
+                ((eq 1080 height) 110)
+                (t 110)))))))
 
 (add-hook 'window-size-change-functions 'user-set-font-face)
 
@@ -78,7 +78,10 @@
   :config
   (setq python-interpreter "~/.venv/bin/python")
   (setq python-shell-interpreter "~/.venv/bin/python")
-  (bind-key "C-c C-p" 'run-python))
+  (bind-key "C-c C-p" 'run-python)
+  (add-hook 'inferior-python-mode-hook 'smartparens-mode)
+  (add-hook 'inferior-python-mode-hook (lambda () (visual-line-mode -1)))
+  (add-hook 'python-mode-hook (lambda () (setq forward-sexp-function nil))))
 
 (use-package ivy :straight t
   :config
