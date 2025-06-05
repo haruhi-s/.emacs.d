@@ -99,6 +99,9 @@
   (setq-default ivy-use-virtual-buffers t)
   (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
 
+(use-package copilot :straight t
+  :config)
+
 (use-package orderless :straight t
   :config
   (setq-default completion-styles '(orderless flex basic))
