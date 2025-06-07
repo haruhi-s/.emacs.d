@@ -11,4 +11,5 @@ transient/*
 tramp
 session.*
 url/*
+.cache/*
 .#*

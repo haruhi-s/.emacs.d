@@ -97,8 +97,16 @@
   (setq-default ivy-use-virtual-buffers t)
   (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
 
-(use-package copilot :straight t
-  :config)
+(use-package copilot :straight t)
+
+(use-package treemacs :straight t)
+
+(use-package all-the-icons :straight t)
+
+(use-package kaolin-themes :straight t
+  :config
+  (load-theme 'kaolin-dark t)
+  (kaolin-treemacs-theme))
 
 (use-package orderless :straight t
   :config
@@ -174,8 +182,6 @@
 (use-package alist :straight apel :demand t)
 
 (use-package magit :straight t)
-
-(use-package doom-themes :straight t)
 
 (use-package image-mode :straight t
   :config
