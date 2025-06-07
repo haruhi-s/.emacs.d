@@ -10,4 +10,5 @@ straight/*
 transient/*
 tramp
 session.*
+url/*
 .#*

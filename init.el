@@ -47,10 +47,8 @@
     (let* ((height (nth 3 (alist-get 'geometry alist)))
            (frames (alist-get 'frames alist)))
       (when (memq frame frames)
-        ( set-face-attribute 'default frame :family "Cascadia Code" :height
-          (cond ((eq 1800 height) 110)
-                ((eq 1080 height) 110)
-                (t 110)))))))
+        ( set-face-attribute 'default frame :family "Hack"
+          :height 110)))))
 
 (add-hook 'window-size-change-functions 'user-set-font-face)
 
@@ -153,10 +151,10 @@
 
 (bind-key* "C-x C-b" 'ivy-switch-buffer)
 (bind-key* "M-m M-b" 'ivy-switch-buffer)
-(bind-key* "M-m b d" 'kill-this-buffer)
+(bind-key* "M-m b d" 'bury-buffer)
 (bind-key* "M-m M-p" 'previous-buffer)
 (bind-key* "M-m M-n" 'next-buffer)
-(bind-key* "M-m M-d" 'kill-this-buffer)
+(bind-key* "M-m M-d" 'bury-buffer)
 (bind-key* "M-m b w" 'read-only-mode)
 
 (bind-key* "C-M-p" 'backward-paragraph)
@@ -212,6 +210,8 @@
 
 (use-package paren-face :straight t)
 
+(use-package cmake-mode :straight t)
+
 (use-package smartparens :straight t
   :config
   (add-hook 'prog-mode-hook 'smartparens-mode))
@@ -224,7 +224,7 @@
   (when (fboundp 'smartparens-mode) (smartparens-mode -1))
   (paredit-mode t)
   (paren-face-mode t)
-  (auto-highlight-symbol-mode 1)
+  ;; (auto-highlight-symbol-mode 1)
   (setq-local tab-always-indent 'complete))
 
 (defun u-minibuffer-setup ()
@@ -395,7 +395,8 @@
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(custom-safe-themes
-   '("de8f2d8b64627535871495d6fe65b7d0070c4a1eb51550ce258cd240ff9394b0"
+   '("014cb63097fc7dbda3edf53eb09802237961cbb4c9e9abd705f23b86511b0a69"
+     "de8f2d8b64627535871495d6fe65b7d0070c4a1eb51550ce258cd240ff9394b0"
      "34cf3305b35e3a8132a0b1bdf2c67623bc2cb05b125f8d7d26bd51fd16d547ec"
      default)))
 (custom-set-faces
