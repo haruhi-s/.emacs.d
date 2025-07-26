@@ -305,7 +305,7 @@
 
 (use-package clang-format :straight t
   :config
-  (setq-default clang-format-executable "/home/a/.venv/bin/clang-format")
+  (setq-default clang-format-executable "/home/a/.local/bin/clang-format")
   (defun save-and-format-buffer ()
     (interactive)
     (clang-format-buffer)
