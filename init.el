@@ -47,8 +47,8 @@
     (let* ((height (nth 3 (alist-get 'geometry alist)))
            (frames (alist-get 'frames alist)))
       (when (memq frame frames)
-        ( set-face-attribute 'default frame :family "Hack"
-          :height 110)))))
+        ( set-face-attribute 'default frame
+          :family "Hack" :height 110)))))
 
 (add-hook 'window-size-change-functions 'user-set-font-face)
 
@@ -134,10 +134,14 @@
 (global-set-key (kbd "C-e") 'end-of-visual-line)
 (global-visual-line-mode 't)
 
-(define-key prog-mode-map (kbd "M-R") 'replace-string)
-(define-key prog-mode-map (kbd "C-M-r") 'replace-regexp)
-(define-key prog-mode-map (kbd "M-n") 'forward-paragraph)
-(define-key prog-mode-map (kbd "M-p") 'backward-paragraph)
+(require 'conf-mode)
+(cl-flet ((frob (key func)
+            (define-key prog-mode-map key func)
+            (define-key conf-unix-mode-map key func)))
+  (frob (kbd "C-M-r") 'replace-string)
+  (frob (kbd "C-M-S-r") 'replace-regexp)
+  (frob (kbd "M-n") 'forward-paragraph)
+  (frob (kbd "M-p") 'backward-paragraph))
 
 (bind-key* "M-m b s" 'scratch-buffer)
 (setq-default initial-major-mode 'lisp-interaction-mode)
