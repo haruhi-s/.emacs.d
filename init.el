@@ -18,6 +18,9 @@
 (setq package-enable-at-startup nil)
 (straight-use-package 'use-package)
 
+(require 'autorevert)
+(global-auto-revert-mode)
+
 ;; general behavior
 (defun eval-and-replace-region (expr)
   (interactive (list (read--expression "Eval on region: " "~")))
@@ -58,6 +61,10 @@
 (setq scroll-margin 5)
 (setq kill-whole-line t)
 (scroll-bar-mode -1)
+
+(use-package hl-todo :straight t
+  :config
+  (add-hook 'prog-mode-hook 'hl-todo-mode))
 
 (use-package transpose-frame :straight t
   :config
@@ -282,6 +289,7 @@
    :map vterm-copy-mode-map
    ("C-c C-k" . (lambda () (interactive) (vterm-copy-mode -1))))
   :config
+  (setq-default vterm-buffer-name-string "*vterm<%s>*")
   (setq vterm-max-scrollback 1000000)
   (defun vterm-send-Ck ()
     "Send `C-k' to libvterm."
