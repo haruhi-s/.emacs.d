@@ -112,7 +112,7 @@
 
 (use-package kaolin-themes :straight t
   :config
-  (load-theme 'kaolin-dark t)
+  (load-theme 'kaolin-valley-dark t)
   (kaolin-treemacs-theme))
 
 (use-package orderless :straight t
