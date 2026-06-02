@@ -51,7 +51,7 @@
            (frames (alist-get 'frames alist)))
       (when (memq frame frames)
         ( set-face-attribute 'default frame
-          :family "Hack" :height 110)))))
+          :family "Hack" :height 100)))))
 
 (add-hook 'window-size-change-functions 'user-set-font-face)
 
@@ -205,8 +205,7 @@
   (setq company-global-modes '(not org-mode))
   (global-company-mode -1))
 
-(use-package paredit
-  :straight t
+(use-package paredit :straight t
   :bind
   ( :map paredit-mode-map
     ("C-j") ("C-m") ("C-h")
@@ -259,8 +258,7 @@
 (define-key emacs-lisp-mode-map (kbd "C-j") 'eval-print-last-sexp)
 
 (use-package popup :straight t)
-(use-package pyim
-  :straight t
+(use-package pyim :straight t
   :config
   (setq pyim-page-length 5)
   (pyim-default-scheme 'microsoft-shuangpin)
@@ -279,15 +277,14 @@
   :config
   (pyim-basedict-enable))
 
-(use-package vterm
-  :straight t
+(use-package vterm :straight t
   :bind
   (:map vterm-mode-map
-   ("C-c C-j" . vterm-copy-mode)
-   ("C-q" . vterm-send-next-key)
-   ("C-k" . vterm-send-Ck)
-   :map vterm-copy-mode-map
-   ("C-c C-k" . (lambda () (interactive) (vterm-copy-mode -1))))
+        ("C-c C-j" . vterm-copy-mode)
+        ("C-q" . vterm-send-next-key)
+        ("C-k" . vterm-send-Ck)
+        :map vterm-copy-mode-map
+        ("C-c C-k" . (lambda () (interactive) (vterm-copy-mode -1))))
   :config
   (setq-default vterm-buffer-name-string "*vterm<%s>*")
   (setq vterm-max-scrollback 1000000)
@@ -297,8 +294,7 @@
     (kill-ring-save (point) (vterm-end-of-line))
     (vterm-send-key "k" nil nil t)))
 
-(use-package multi-vterm
-  :straight t
+(use-package multi-vterm :straight t
   :config
   (bind-key* (kbd "M-t M-t") 'multi-vterm) ;
   (bind-key* (kbd "M-t M-p") 'multi-vterm-prev)
@@ -325,8 +321,7 @@
   (add-hook 'c++-mode-hook
             (lambda () (local-set-key (kbd "C-x C-s") 'save-and-format-buffer))))
 
-(use-package swiper
-  :straight t
+(use-package swiper :straight t
   :config
   (global-set-key (kbd "M-t") 'swiper-thing-at-point)
   (global-set-key (kbd "C-s") 'swiper-isearch)
@@ -334,9 +329,14 @@
 
 (use-package slime-company :straight t)
 
-(use-package slime
-  :straight t
+(use-package slime :straight t
+  :bind (:map slime-repl-mode-map
+              ("M-r")
+              ("M-s")
+              ("C-s" . consult-history)
+              ("C-r" . consult-history))
   :config
+  (set-alist 'consult-mode-histories 'slime-repl-mode '(slime-repl-input-history))
   (setq-default company-backends (cons 'company-slime (remove 'company-slime company-backends)))
   (setq-default inferior-lisp-program "sbcl")
   (slime-setup '(slime-company slime-fancy slime-quicklisp slime-asdf slime-media slime-parse slime-mrepl))
@@ -358,15 +358,6 @@
    slime-lisp-implementations
    `((sbcl ("sbcl" "--dynamic-space-size" "24000" "--control-stack-size" "2"))))
   )
-
-(use-package slime-repl
-  :bind (:map slime-repl-mode-map
-              ("M-r")
-              ("M-s")
-              ("C-s" . consult-history)
-              ("C-r" . consult-history))
-  :config
-    (set-alist 'consult-mode-histories 'slime-repl-mode '(slime-repl-input-history)))
 
 (use-package telega :straight t
   :config
@@ -406,6 +397,35 @@
    (cond
     ((eq system-type 'gnu/linux)
      "xclip -selection clipboard -t image/png -o > '%s'"))))
+
+(use-package lsp-mode :straight t
+  :ensure t
+  :hook ((c-mode . lsp)
+         (c++-mode . lsp))
+  :commands lsp
+  :config
+  (setq lsp-ccls-enable t)
+  (setq lsp-ccls-init-options
+        '(:clang
+          (:extraArgs
+           ["--target=x86_64-pc-linux-gnu" ; Change to x86_64-apple-darwin if on macOS
+            "-I/usr/include/c++/13"       ; Adjust number to match your installed GCC version
+            "-I/usr/include/x86_64-linux-gnu/c++/13"]
+           :excludeArgs []))))
+
+(setq lsp-diagnostics-provider :flymake)
+(setq lsp-enable-flymake t)
+(setq lsp-enable-flycheck nil)
+
+(use-package ccls :straight t
+  :ensure t
+  :after lsp-mode
+  :hook ((c-mode c++-mode objc-mode) . (lambda () (require 'ccls) (lsp-deferred)))
+  :config
+  ;; Ensure Emacs can find your ccls executable.
+  ;; If 'ccls' is not in your system PATH, provide the absolute path.
+  (setq ccls-executable "ccls")
+  (setq ccls-args '("-log-file=/tmp/ccls.log" "-v=1")))
 
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
