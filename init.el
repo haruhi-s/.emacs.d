@@ -104,8 +104,6 @@
   (setq-default ivy-use-virtual-buffers t)
   (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
 
-(use-package copilot :straight t)
-
 (use-package treemacs :straight t)
 
 (use-package all-the-icons :straight t)
