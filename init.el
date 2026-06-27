@@ -86,7 +86,8 @@
   (bind-key "C-c C-p" 'run-python)
   (add-hook 'inferior-python-mode-hook 'smartparens-mode)
   (add-hook 'inferior-python-mode-hook (lambda () (visual-line-mode -1)))
-  (add-hook 'python-mode-hook (lambda () (setq forward-sexp-function nil))))
+  (add-hook 'python-mode-hook (lambda () (setq forward-sexp-function nil)))
+  (setq python-shell-dedicated 'buffer))
 
 (use-package ivy :straight t
   :config
@@ -141,6 +142,7 @@
 
 (require 'conf-mode)
 (cl-flet ((frob (key func)
+            (define-key text-mode-map key func)
             (define-key prog-mode-map key func)
             (define-key conf-unix-mode-map key func)))
   (frob (kbd "C-M-r") 'replace-string)
@@ -198,10 +200,18 @@
   (define-key image-mode-map (kbd "-") 'image-decrease-size))
 
 (use-package company :straight t
+  :hook (python-mode . company-mode)
+
+  :custom
+  (company-idle-delay 0.05)
+  (company-minimum-prefix-length 1)
+
   :config
   (setf company-backends '(company-capf company-files))
   (setq company-global-modes '(not org-mode))
-  (global-company-mode -1))
+  (global-company-mode -1)
+  (setq python-shell-interpreter "python3")
+  (setq python-shell-completion-native-enable t))
 
 (use-package paredit :straight t
   :bind
