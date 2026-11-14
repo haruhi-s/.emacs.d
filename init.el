@@ -15,8 +15,13 @@
       (eval-print-last-sexp)))
   (load bootstrap-file nil 'nomessage))
 
-(setq package-enable-at-startup nil)
 (straight-use-package 'use-package)
+;; straight builds its own `project'; emacs 30 preloads the built-in one. If the
+;; built-in loads first, any later (require 'project) — e.g. from eglot — hits
+;; the "Feature 'project' is now provided by a different file" guard, which
+;; aborts python-mode setup and kills font-lock. Load straight's copy first.
+(straight-use-package 'project)
+(require 'project)
 
 (require 'autorevert)
 (global-auto-revert-mode)
@@ -31,6 +36,14 @@
     (kill-region rbeg rend)
     (prin1 result (current-buffer))))
 (bind-key* "M-@" 'eval-and-replace-region)
+
+(defun md-align-all-tables ()
+  (interactive)
+  (save-excursion
+    (goto-char (point-min))
+    (while (re-search-forward "^[ \t]*|" nil t)
+      (markdown-table-align)
+      (goto-char (markdown-table-end)))))
 
 (setq ring-bell-function 'ignore) ;; silence
 (add-to-list 'auto-mode-alist '("\\.sbclrc\\'" . lisp-mode))
@@ -51,9 +64,16 @@
            (frames (alist-get 'frames alist)))
       (when (memq frame frames)
         ( set-face-attribute 'default frame
-          :family "Hack" :height 100)))))
+          :family "Hack" :height 90)))))
 
 (add-hook 'window-size-change-functions 'user-set-font-face)
+
+;; Symbols Hack lacks (spinner frames, ⏺ ⎿, braille...) otherwise fall back to
+;; proportional fonts with their own widths/heights, so TUI lines jitter in vterm.
+(dolist (range '((#x2190 . #x21ff) (#x2300 . #x23ff) (#x2460 . #x24ff)
+                 (#x25a0 . #x27bf) (#x2800 . #x28ff) (#x2900 . #x2bff)))
+  (set-fontset-font t range (font-spec :family "FreeMono") nil 'prepend)
+  (set-fontset-font t range (font-spec :family "DejaVu Sans Mono") nil 'prepend))
 
 (tool-bar-mode -1)
 (menu-bar-mode -1)
@@ -100,8 +120,6 @@
             :action #'ivy--switch-buffer-action
             :matcher #'ivy--switch-buffer-matcher
             :caller 'ivy-switch-buffer))
-  (ivy-mode 1)
-  (setq-default completing-read-function 'completing-read-default)
   (setq-default ivy-use-virtual-buffers t)
   (setq ivy-re-builders-alist '((t . orderless-ivy-re-builder))))
 
@@ -154,7 +172,11 @@
 (setq-default initial-major-mode 'lisp-interaction-mode)
 (bind-key* "C-(" 'split-window-horizontally)
 (bind-key* "C--" 'split-window-vertically)
-(bind-key* "C-W" 'delete-window)
+(bind-key* "C-S-<left>" 'windmove-left)
+(bind-key* "C-S-<right>" 'windmove-right)
+(bind-key* "C-S-<up>" 'windmove-up)
+(bind-key* "C-S-<down>" 'windmove-down)
+(bind-key* "C-S-w" 'delete-window)
 (bind-key* "C-w" 'kill-region)
 
 (use-package winum :straight t)
@@ -210,8 +232,34 @@
   (setf company-backends '(company-capf company-files))
   (setq company-global-modes '(not org-mode))
   (global-company-mode -1)
-  (setq python-shell-interpreter "python3")
-  (setq python-shell-completion-native-enable t))
+  ;; The inferior python runs on mia0 (TRAMP): capf completion queries the REPL
+  ;; synchronously, so every keystroke pause cost a network round trip — and
+  ;; froze emacs whenever the remote REPL was busy computing. Use buffer-local
+  ;; word completion in python buffers instead (instant, no network); native
+  ;; shell completion is also TRAMP-unsafe.
+  (setq python-shell-completion-native-enable nil)
+  (defun my/python-company-local ()
+    ;; capf is served by eglot (local pylsp/jedi: names, attributes, kwarg=).
+    ;; Drop python.el's REPL-querying capf so completion can never block on the
+    ;; remote (mia0) inferior process, even if eglot is off.
+    (remove-hook 'completion-at-point-functions #'python-completion-at-point t)
+    (setq-local company-backends '(company-capf company-dabbrev-code company-files))
+    (setq-local company-dabbrev-code-everywhere t))
+  (add-hook 'python-mode-hook #'my/python-company-local))
+
+(use-package eglot
+  :hook (python-mode . eglot-ensure)
+  :config
+  ;; absolute path: emacs' desktop-launcher PATH doesn't include ~/.venv/bin
+  (add-to-list 'eglot-server-programs
+               '(python-mode . ("/home/a/.venv/bin/pylsp")))
+  ;; research files use `from base import *`: pyflakes can't see through star
+  ;; imports and would wavy-underline half the buffer. Keep jedi completion,
+  ;; drop the linters.
+  (setq-default eglot-workspace-configuration
+                '(:pylsp (:plugins (:pyflakes (:enabled :json-false)
+                                    :pycodestyle (:enabled :json-false)
+                                    :mccabe (:enabled :json-false))))))
 
 (use-package paredit :straight t
   :bind
@@ -221,7 +269,7 @@
     ("M-C" . 'paredit-convolute-sexp))
   :config
   (define-advice paredit-kill (:around (fn &rest args) u-kill)
-    (let* ((cur (point)) (bol (point-at-bol)) (eol (point-at-eol))
+    (let* ((cur (point)) (bol (pos-bol)) (eol (pos-eol))
            (end (save-excursion (paredit-forward-sexps-to-kill cur eol) (point))))
       (if (and (eq cur bol)
                (not (eq ?\C-j (char-before (1- cur))))
@@ -243,7 +291,6 @@
 (use-package rainbow-delimiters :straight t)
 
 (defun u-lisp-config ()
-  (smartparens-mode -1)
   (rainbow-delimiters-mode 1)
   (when (fboundp 'smartparens-mode) (smartparens-mode -1))
   (paredit-mode t)
@@ -288,11 +335,8 @@
 (use-package vterm :straight t
   :bind
   (:map vterm-mode-map
-        ("C-c C-j" . vterm-copy-mode)
         ("C-q" . vterm-send-next-key)
-        ("C-k" . vterm-send-Ck)
-        :map vterm-copy-mode-map
-        ("C-c C-k" . (lambda () (interactive) (vterm-copy-mode -1))))
+        ("C-k" . vterm-send-Ck))
   :config
   (setq-default vterm-buffer-name-string "*vterm<%s>*")
   (setq vterm-max-scrollback 1000000)
@@ -331,7 +375,7 @@
 
 (use-package swiper :straight t
   :config
-  (global-set-key (kbd "M-t") 'swiper-thing-at-point)
+  (global-set-key (kbd "C-t") 'swiper-thing-at-point)
   (global-set-key (kbd "C-s") 'swiper-isearch)
   (global-set-key (kbd "C-r") 'swiper-isearch-backward))
 
@@ -346,7 +390,6 @@
   :config
   (set-alist 'consult-mode-histories 'slime-repl-mode '(slime-repl-input-history))
   (setq-default company-backends (cons 'company-slime (remove 'company-slime company-backends)))
-  (setq-default inferior-lisp-program "sbcl")
   (slime-setup '(slime-company slime-fancy slime-quicklisp slime-asdf slime-media slime-parse slime-mrepl))
   (add-hook 'slime-mode-hook 'u-lisp-config)
   (add-hook 'slime-repl-mode-hook 'u-lisp-config)
@@ -401,6 +444,7 @@
                        "autodetect"))))))
   (global-set-key (kbd "C-M-y") 'paste-screenshot-to-telega)
   :custom
+  ;; needs xclip, which is not installed here: C-M-y sends nothing until it is
   (org-download-screenshot-method
    (cond
     ((eq system-type 'gnu/linux)
@@ -408,31 +452,23 @@
 
 (use-package lsp-mode :straight t
   :ensure t
-  :hook ((c-mode . lsp)
-         (c++-mode . lsp))
   :commands lsp
   :config
-  (setq lsp-ccls-enable t)
-  (setq lsp-ccls-init-options
+  (setq ccls-initialization-options
         '(:clang
           (:extraArgs
-           ["--target=x86_64-pc-linux-gnu" ; Change to x86_64-apple-darwin if on macOS
-            "-I/usr/include/c++/13"       ; Adjust number to match your installed GCC version
-            "-I/usr/include/x86_64-linux-gnu/c++/13"]
+           ["-I/usr/include/c++/13"       ; Adjust number to match your installed GCC version
+            "-I/usr/include/x86_64-linux-gnu/c++/13"
+            "-D__cpp_concepts=202002L"]   ; clang 18 + libstdc++ 13: enables std::expected
            :excludeArgs []))))
 
 (setq lsp-diagnostics-provider :flymake)
-(setq lsp-enable-flymake t)
-(setq lsp-enable-flycheck nil)
 
 (use-package ccls :straight t
   :ensure t
   :after lsp-mode
   :hook ((c-mode c++-mode objc-mode) . (lambda () (require 'ccls) (lsp-deferred)))
   :config
-  ;; Ensure Emacs can find your ccls executable.
-  ;; If 'ccls' is not in your system PATH, provide the absolute path.
-  (setq ccls-executable "ccls")
   (setq ccls-args '("-log-file=/tmp/ccls.log" "-v=1")))
 
 (custom-set-variables
@@ -444,10 +480,21 @@
    '("014cb63097fc7dbda3edf53eb09802237961cbb4c9e9abd705f23b86511b0a69"
      "de8f2d8b64627535871495d6fe65b7d0070c4a1eb51550ce258cd240ff9394b0"
      "34cf3305b35e3a8132a0b1bdf2c67623bc2cb05b125f8d7d26bd51fd16d547ec"
-     default)))
+     default))
+ '(safe-local-variable-directories '("/home/a/claude/qr/")))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  )
+
+(defun my/sync-qr-to-mia0 ()
+  (when (and buffer-file-name
+             (string-prefix-p (expand-file-name "~/codex/qr/") buffer-file-name)
+             (string-suffix-p ".py" buffer-file-name))
+    (start-process "qr-sync" nil "rsync" "-a" buffer-file-name
+                   "mia0:/home/try507/claude/qr/")))
+
+(add-hook 'after-save-hook #'my/sync-qr-to-mia0)
+(load "~/codex/qr/emacs-mia0-setup.el")
