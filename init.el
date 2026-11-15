@@ -64,16 +64,18 @@
            (frames (alist-get 'frames alist)))
       (when (memq frame frames)
         ( set-face-attribute 'default frame
-          :family "Hack" :height 90)))))
+          :family "Hack Tight" :height 90)))))
 
 (add-hook 'window-size-change-functions 'user-set-font-face)
 
 ;; Symbols Hack lacks (spinner frames, ⏺ ⎿, braille...) otherwise fall back to
 ;; proportional fonts with their own widths/heights, so TUI lines jitter in vterm.
-(dolist (range '((#x2190 . #x21ff) (#x2300 . #x23ff) (#x2460 . #x24ff)
+(dolist (range '((#x2190 . #x22ff) (#x2300 . #x23ff) (#x2460 . #x24ff)
                  (#x25a0 . #x27bf) (#x2800 . #x28ff) (#x2900 . #x2bff)))
-  (set-fontset-font t range (font-spec :family "FreeMono") nil 'prepend)
-  (set-fontset-font t range (font-spec :family "DejaVu Sans Mono") nil 'prepend))
+  (set-fontset-font t range (font-spec :family "FreeMono") nil 'prepend))
+;; CJK: Noto Sans Mono CJK SC copy with Hack Tight's line height and a 2-cell advance (~/.local/share/fonts/tight)
+(dolist (cs '(han cjk-misc kana bopomofo (#x3000 . #x303f) (#xff00 . #xffef)))
+  (set-fontset-font t cs (font-spec :family "Noto Mono CJK SC Tight")))
 
 (tool-bar-mode -1)
 (menu-bar-mode -1)
