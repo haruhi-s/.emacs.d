@@ -346,7 +346,36 @@
     "Send `C-k' to libvterm."
     (interactive)
     (kill-ring-save (point) (vterm-end-of-line))
-    (vterm-send-key "k" nil nil t)))
+    (vterm-send-key "k" nil nil t))
+
+  (defvar my/vterm-wheel-style 'mouse
+    "`mouse' sends SGR mouse wheel sequences; `arrows' sends arrow keys.")
+  (defvar my/vterm-wheel-multiplier 1
+    "Extra factor applied to the number of wheel steps sent to the program.")
+  (defun my/vterm-wheel (event)
+    "Forward a wheel EVENT to the program running in vterm."
+    (interactive "e")
+    (let* ((up (memq (event-basic-type event) '(wheel-up mouse-4)))
+           (pos (posn-col-row (event-start event)))
+           (x (1+ (car pos)))
+           (y (1+ (cdr pos)))
+           (base (car mouse-wheel-scroll-amount))
+           (n (* my/vterm-wheel-multiplier
+                 (if (numberp base) base 1)
+                 (if mouse-wheel-progressive-speed (event-click-count event) 1)
+                 (event-line-count event))))
+      (setq n (max 1 (round n)))
+      (pcase my/vterm-wheel-style
+        ('mouse
+         (let ((seq (format "\e[<%d;%d;%dM" (if up 64 65) x y)))
+           (process-send-string
+            vterm--process
+            (apply #'concat (make-list n seq)))))
+        ('arrows
+         (dotimes (_ n)
+           (vterm-send-key (if up "<up>" "<down>")))))))
+  (dolist (k '("s-<wheel-up>" "s-<wheel-down>" "s-<mouse-4>" "s-<mouse-5>"))
+    (define-key vterm-mode-map (kbd k) #'my/vterm-wheel)))
 
 (use-package multi-vterm :straight t
   :config
