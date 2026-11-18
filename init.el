@@ -69,7 +69,7 @@
 (add-hook 'window-size-change-functions 'user-set-font-face)
 
 ;; Symbols Hack lacks (spinner frames, ⏺ ⎿, braille...) otherwise fall back to
-;; proportional fonts with their own widths/heights, so TUI lines jitter in vterm.
+;; proportional fonts with their own widths/heights, so TUI lines jitter in ghostel.
 (dolist (range '((#x2190 . #x22ff) (#x2300 . #x23ff) (#x2460 . #x24ff)
                  (#x25a0 . #x27bf) (#x2800 . #x28ff) (#x2900 . #x2bff)))
   (set-fontset-font t range (font-spec :family "FreeMono") nil 'prepend))
@@ -334,56 +334,67 @@
   :config
   (pyim-basedict-enable))
 
-(use-package vterm :straight t
-  :bind
-  (:map vterm-mode-map
-        ("C-q" . vterm-send-next-key)
-        ("C-k" . vterm-send-Ck))
+(use-package ghostel
+  :straight (ghostel :type git :host github :repo "dakra/ghostel"
+                     :files (:defaults "etc" "src" "vendor" "build.zig"
+                                       "build.zig.zon" "symbols.map"))
+  :defer t
+  :init
+  ;; Keep the native module outside straight's build dir so rebuilds keep it.
+  (setq ghostel-module-directory (locate-user-emacs-file "ghostel/"))
+  (bind-key* (kbd "M-t M-t") 'ghostel-new)
+  (bind-key* (kbd "M-t M-p") 'ghostel-previous)
+  (bind-key* (kbd "M-t M-n") 'ghostel-next)
   :config
-  (setq-default vterm-buffer-name-string "*vterm<%s>*")
-  (setq vterm-max-scrollback 1000000)
-  (defun vterm-send-Ck ()
-    "Send `C-k' to libvterm."
+  (setq ghostel-buffer-name-function
+        (lambda (title) (and title (format "*ghostel<%s>*" title))))
+  ;; Bytes, not lines: about 90k rows at 80 columns.
+  (setq ghostel-max-scrollback (* 64 1024 1024))
+  ;; Align the grid to the window top like vterm. The default pixel anchor
+  ;; aligns the last row to the window bottom, which leaves a clipped
+  ;; scrollback row above the first row when the height is not a whole number
+  ;; of rows.
+  (setq ghostel--pixel-anchor-supported-p nil)
+
+  (defun my/ghostel-send-Ck ()
+    "Copy the rest of the line to the kill ring, then send `C-k'."
     (interactive)
-    (kill-ring-save (point) (vterm-end-of-line))
-    (vterm-send-key "k" nil nil t))
+    (kill-new (buffer-substring-no-properties (point) (line-end-position)))
+    (ghostel-send-key "k" "ctrl"))
 
-  (defvar my/vterm-wheel-style 'mouse
-    "`mouse' sends SGR mouse wheel sequences; `arrows' sends arrow keys.")
-  (defvar my/vterm-wheel-multiplier 1
+  (defvar my/ghostel-wheel-multiplier 1
     "Extra factor applied to the number of wheel steps sent to the program.")
-  (defun my/vterm-wheel (event)
-    "Forward a wheel EVENT to the program running in vterm."
+  (defun my/ghostel-wheel (event)
+    "Forward a wheel EVENT to the program running in ghostel.
+Send mouse wheel presses when the program tracks the mouse, arrow keys
+otherwise."
     (interactive "e")
-    (let* ((up (memq (event-basic-type event) '(wheel-up mouse-4)))
-           (pos (posn-col-row (event-start event)))
-           (x (1+ (car pos)))
-           (y (1+ (cdr pos)))
-           (base (car mouse-wheel-scroll-amount))
-           (n (* my/vterm-wheel-multiplier
-                 (if (numberp base) base 1)
-                 (if mouse-wheel-progressive-speed (event-click-count event) 1)
-                 (event-line-count event))))
-      (setq n (max 1 (round n)))
-      (pcase my/vterm-wheel-style
-        ('mouse
-         (let ((seq (format "\e[<%d;%d;%dM" (if up 64 65) x y)))
-           (process-send-string
-            vterm--process
-            (apply #'concat (make-list n seq)))))
-        ('arrows
-         (dotimes (_ n)
-           (vterm-send-key (if up "<up>" "<down>")))))))
-  (dolist (k '("s-<wheel-up>" "s-<wheel-down>" "s-<mouse-4>" "s-<mouse-5>"))
-    (define-key vterm-mode-map (kbd k) #'my/vterm-wheel)))
+    (with-current-buffer (window-buffer (ghostel--event-window event))
+      (if (not (and ghostel--term (ghostel--terminal-input-mode-p)))
+          (mwheel-scroll event)
+        (let* ((up (memq (event-basic-type event) '(wheel-up mouse-4)))
+               (base (car mouse-wheel-scroll-amount))
+               (n (* my/ghostel-wheel-multiplier
+                     (if (numberp base) base 1)
+                     (if mouse-wheel-progressive-speed
+                         (event-click-count event)
+                       1)
+                     (event-line-count event))))
+          (setq n (max 1 (round n)))
+          (if (ghostel--mouse-tracking-p ghostel--term)
+              (let ((cell (ghostel--posn-cell (event-start event))))
+                (dotimes (_ n)
+                  (ghostel--mouse-event ghostel--term 0 (if up 4 5)
+                                        (cdr cell) (car cell) 0)))
+            (dotimes (_ n)
+              (ghostel-send-key (if up "up" "down"))))))))
 
-(use-package multi-vterm :straight t
-  :config
-  (bind-key* (kbd "M-t M-t") 'multi-vterm) ;
-  (bind-key* (kbd "M-t M-p") 'multi-vterm-prev)
-  (bind-key* (kbd "M-t M-n") 'multi-vterm-next)
-  (define-key vterm-mode-map (kbd "C-c C-j") 'vterm-copy-mode)
-  (define-key vterm-copy-mode-map (kbd "C-c C-k") 'vterm-copy-mode))
+  (dolist (map (list ghostel-mode-map ghostel-char-mode-map))
+    (dolist (k '("s-<wheel-up>" "s-<wheel-down>" "s-<mouse-4>" "s-<mouse-5>"))
+      (define-key map (kbd k) #'my/ghostel-wheel)))
+  (define-key ghostel-semi-char-mode-map (kbd "C-k") #'my/ghostel-send-Ck)
+  (define-key ghostel-semi-char-mode-map (kbd "C-c C-j") #'ghostel-copy-mode)
+  (define-key ghostel-readonly-mode-map (kbd "C-c C-k") #'ghostel-semi-char-mode))
 
 (use-package auto-highlight-symbol :straight t
   :config
